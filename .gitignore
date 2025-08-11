@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.build/
+dist/
+
+# Venv
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# App
+job_hunter.db
+logs/
+.env
+last_report.html
+last_batch_report.html

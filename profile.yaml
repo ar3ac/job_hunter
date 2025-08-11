@@ -1,0 +1,10 @@
+searches:
+  - name: "Python Junior Italia"
+    keywords: ["python", "junior"]
+    location: "Italy"
+    italy_extended: true
+
+  - name: "Automation Lombardia"
+    keywords: ["automation", "python"]
+    location: "Lombardy"
+    italy_extended: true

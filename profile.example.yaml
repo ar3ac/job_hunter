@@ -1,0 +1,8 @@
+
+### `profile.example.yaml`
+```yaml
+searches:
+  - name: "Python Junior Italia"
+    keywords: ["python", "junior"]
+    location: "Italy"
+    italy_extended: true
