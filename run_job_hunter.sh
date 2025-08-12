@@ -30,5 +30,10 @@ fi
 # fi
 
 # Avvia l’app (tutti gli argomenti passati vengono inoltrati)
-exec python src/main.py "$@"
+if [[ "${1:-}" == "batch" ]]; then
+    shift
+    exec python src/batch_main.py "$@"
+else
+    exec python src/main.py "$@"
+fi
 
