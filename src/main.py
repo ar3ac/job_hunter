@@ -5,10 +5,11 @@ import os
 from datetime import datetime
 
 from dotenv import load_dotenv
-from fetch_remotive import fetch_remotive
 from db import connect, save_jobs
 from report import render_html
 from notify import send_email
+from sources import SOURCES
+
 
 
 def setup_logging() -> None:
@@ -28,8 +29,13 @@ def cli() -> None:
     logging.info("Avvio Job Hunter")
     load_dotenv()  # carica .env se presente
 
+
     parser = argparse.ArgumentParser(
-        description="Job Hunter — Remotive + DB + notify")
+    description="Job Hunter — fonti multiple + DB + notify"
+    )
+    parser.add_argument("--sources", nargs="+", default=["remotive"],
+                    help="Fonti da usare (es: remotive adzuna)")
+
     parser.add_argument("--kw", nargs="+",
                         default=["python"], help="Parole chiave")
     parser.add_argument("--location", default=None,
@@ -46,15 +52,23 @@ def cli() -> None:
                         help="Salva report locale last_report.html")
     args = parser.parse_args()
 
-    # 1) Fetch con gestione errori
-    try:
-        jobs = fetch_remotive(args.kw, args.location,
-                              args.limit, args.italy_extended)
-    except Exception as e:
-        logging.exception("Errore durante il fetch Remotive: %s", e)
-        return
 
-    logging.info("Annunci totali trovati: %d", len(jobs))
+    # 1) Fetch da una o più fonti
+    all_jobs = []
+    for name in args.sources:
+        fetch = SOURCES.get(name)
+        if not fetch:
+            logging.warning("Fonte sconosciuta: %s (ignorata)", name)
+            continue
+        try:
+            part = fetch(args.kw, args.location, args.limit, args.italy_extended)
+            logging.info("Fonte %s: trovati %d annunci", name, len(part))
+            all_jobs.extend(part)
+        except Exception as e:
+            logging.exception("Errore durante il fetch %s: %s", name, e)
+
+    logging.info("Annunci totali trovati (somma fonti): %d", len(all_jobs))
+    jobs = all_jobs
 
     # 2) Dry-run: niente DB
     if args.dry_run:

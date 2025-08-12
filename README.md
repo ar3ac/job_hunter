@@ -4,6 +4,7 @@
 
 Attualmente utilizza come fonte principale l'API di [Remotive](https://remotive.com), ma la struttura è pensata per aggiungere facilmente altre fonti come Adzuna, Indeed, LinkedIn, ecc.
 
+12/08/25 Aggiunto fonte Adzuna e --sources come parametro 
 ---
 
 ## 🚀 Funzionalità
