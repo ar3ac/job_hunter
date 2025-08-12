@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from db import connect, save_jobs
 from report import render_html
 from notify import send_email
-from sources import SOURCES  # <- registro fonti (remotive, adzuna, ...)
+from sources import SOURCES  # registro fonti (remotive, adzuna, ...)
 
 
 def setup_logging() -> None:
@@ -29,21 +29,21 @@ def main() -> None:
     setup_logging()
     logging.info("Avvio Job Hunter (batch/profile)")
 
-    # Carica .env dalla root repo, robusto per cron e cwd diversi
+    # Root repo e .env (robusto per cron)
     ROOT_DIR = Path(__file__).resolve().parents[1]
     DOTENV_PATH = ROOT_DIR / ".env"
     load_dotenv(DOTENV_PATH)
     if os.getenv("ADZUNA_APP_ID"):
-        logging.info(".env caricato dalla path: %s", DOTENV_PATH)
+        logging.info(".env caricato: %s", DOTENV_PATH)
 
-    # Profilo YAML (variabile d'ambiente o default)
+    # Profilo YAML (env o default)
     profile_path = os.getenv("PROFILE_YAML", "profile.yaml")
-    profile_path = str((ROOT_DIR / profile_path).resolve())
-    if not os.path.exists(profile_path):
+    profile_path = (ROOT_DIR / profile_path).resolve()
+    if not profile_path.exists():
         logging.error("Profilo non trovato: %s", profile_path)
         sys.exit(1)
 
-    with open(profile_path, "r", encoding="utf-8") as f:
+    with profile_path.open("r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f) or {}
 
     searches = cfg.get("searches", [])
@@ -51,7 +51,9 @@ def main() -> None:
         logging.warning("Nessuna ricerca definita in profile.yaml")
         return
 
+    # DB unico per tutto il batch
     db_path = os.getenv("DB_PATH", str(ROOT_DIR / "job_hunter.db"))
+    logging.info("DB path batch: %s", db_path)
     conn = connect(db_path)
 
     all_new: list[dict] = []
@@ -66,8 +68,10 @@ def main() -> None:
             limit = int(s.get("limit", 100))
             sources_list = s.get("sources") or ["remotive"]  # default
 
-            logging.info("▶︎ [%s] kw=%s | location=%s | limit=%s | sources=%s",
-                         search_name, keywords, location, limit, sources_list)
+            logging.info(
+                "▶︎ [%s] kw=%s | location=%s | limit=%s | sources=%s",
+                search_name, keywords, location, limit, sources_list
+            )
 
             # raccoglie i job da tutte le fonti selezionate
             search_jobs: list[dict] = []
@@ -90,6 +94,12 @@ def main() -> None:
 
             # salvataggio + etichetta di provenienza (nome ricerca)
             new_jobs = save_jobs(conn, search_jobs)
+            # se save_jobs non committa internamente, committa qui:
+            try:
+                conn.commit()
+            except Exception:
+                logging.exception("Commit fallito")
+
             for j in new_jobs:
                 j["search"] = search_name  # utile nel report/email
 
@@ -116,9 +126,10 @@ def main() -> None:
         except Exception as e:
             logging.exception("Errore invio email: %s", e)
 
-        with open(Path(ROOT_DIR, "last_batch_report.html"), "w", encoding="utf-8") as f:
+        out = ROOT_DIR / "last_batch_report.html"
+        with out.open("w", encoding="utf-8") as f:
             f.write(html)
-        logging.info("💾 Report salvato in last_batch_report.html")
+        logging.info("💾 Report salvato in %s", out)
     else:
         logging.info("Nessun nuovo annuncio oggi.")
 
