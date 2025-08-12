@@ -22,12 +22,12 @@ if [[ -f requirements.txt ]]; then
 fi
 
 # Carica .env se presente (funziona anche da cron)
-if [[ -f .env ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  . ./.env
-  set +a
-fi
+# if [[ -f .env ]]; then
+#   set -a
+#   # shellcheck disable=SC1091
+#   . ./.env
+#   set +a
+# fi
 
 # Avvia l’app (tutti gli argomenti passati vengono inoltrati)
 exec python src/main.py "$@"

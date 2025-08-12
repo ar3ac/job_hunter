@@ -1,8 +1,14 @@
 
-### `profile.example.yaml`
-```yaml
 searches:
-  - name: "Python Junior Italia"
-    keywords: ["python", "junior"]
-    location: "Italy"
-    italy_extended: true
+  - name: python_dev_lombardia
+    sources: [remotive, adzuna]
+    keywords: ["python developer"]
+    location: "Lombardia"
+    limit: 50
+    italy_extended: false
+
+  - name: backend_remote
+    sources: [remotive, adzuna]
+    keywords: ["backend", "python"]
+    location: "Remote"
+    limit: 30
