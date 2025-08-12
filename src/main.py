@@ -3,11 +3,17 @@ import argparse
 import logging
 import os
 from datetime import datetime
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 from db import connect, save_jobs
 from report import render_html
 from notify import send_email
 from sources import SOURCES
+from pathlib import Path
+
+
+# Progetto: .../job_hunter/src/main.py  -> root = .../job_hunter
+ROOT_DIR = Path(__file__).resolve().parents[1]
+DOTENV_PATH = ROOT_DIR / ".env"
 
 
 
@@ -26,8 +32,9 @@ def setup_logging() -> None:
 def cli() -> None:
     setup_logging()
     logging.info("Avvio Job Hunter")
-    #load_dotenv()  # carica .env se presente
-    load_dotenv(find_dotenv(usecwd=True))
+
+
+    load_dotenv(DOTENV_PATH)
 
 
     parser = argparse.ArgumentParser(
