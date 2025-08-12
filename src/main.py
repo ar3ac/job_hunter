@@ -3,8 +3,7 @@ import argparse
 import logging
 import os
 from datetime import datetime
-
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from db import connect, save_jobs
 from report import render_html
 from notify import send_email
@@ -27,7 +26,8 @@ def setup_logging() -> None:
 def cli() -> None:
     setup_logging()
     logging.info("Avvio Job Hunter")
-    load_dotenv()  # carica .env se presente
+    #load_dotenv()  # carica .env se presente
+    load_dotenv(find_dotenv(usecwd=True))
 
 
     parser = argparse.ArgumentParser(
