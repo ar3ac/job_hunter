@@ -1,11 +1,34 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-PROJECT_DIR="$HOME/Progetti/job_hunter"
-VENV="$PROJECT_DIR/.venv"
-cd "$PROJECT_DIR"; source "$VENV/bin/activate"
 
-# Variabili opzionali
-export DB_PATH="$PROJECT_DIR/job_hunter.db"
-export PROFILE_YAML="$PROJECT_DIR/profile.yaml"
+# Vai sempre nella cartella del progetto
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$DIR"
 
-"$VENV/bin/python" "$PROJECT_DIR/src/run_batch.py" >> "$PROJECT_DIR/logs/cron.log" 2>&1
+# Logs
+mkdir -p logs
+
+# Venv
+if [[ ! -d .venv ]]; then
+  python3 -m venv .venv
+fi
+# shellcheck disable=SC1091
+source .venv/bin/activate
+
+# Dipendenze
+if [[ -f requirements.txt ]]; then
+  pip install -U pip >/dev/null
+  pip install -r requirements.txt >/dev/null
+fi
+
+# Carica .env se presente (funziona anche da cron)
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+fi
+
+# Avvia l’app (tutti gli argomenti passati vengono inoltrati)
+exec python src/main.py "$@"
+
