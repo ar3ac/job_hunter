@@ -2,9 +2,8 @@
 
 **Job Hunter** è uno script Python modulare per cercare offerte di lavoro online, filtrare in base a parole chiave e località, salvarle in un database ed inviare una notifica email con i nuovi annunci trovati.
 
-Attualmente utilizza come fonte principale l'API di [Remotive](https://remotive.com), ma la struttura è pensata per aggiungere facilmente altre fonti come Adzuna, Indeed, LinkedIn, ecc.
+Attualmente utilizza come fonte principale l'API di [Remotive](https://remotive.com), ma la struttura è pensata per aggiungere facilmente altre fonti come Adzuna, Indeed, LinkedIn, ecc. 12/08/25 Aggiunto fonte Adzuna e --sources come parametro 
 
-12/08/25 Aggiunto fonte Adzuna e --sources come parametro 
 ---
 
 ## 🚀 Funzionalità
