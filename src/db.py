@@ -1,13 +1,12 @@
-from __future__ import annotations
 import sqlite3
 import hashlib
 import re
+from urllib.parse import urlsplit, urlunsplit
 import datetime as dt
 import logging
 
 
 def normalize(s: str) -> str:
-    """Pulisce e rende minuscolo un testo per confronti."""
     if not s:
         return ""
     s = s.lower().strip()
@@ -16,25 +15,30 @@ def normalize(s: str) -> str:
     return s
 
 
-def hash_strong(source: str, url: str) -> str:
-    """Crea un hash univoco basato su fonte e URL."""
-    raw = f"{normalize(source)}|{normalize(url)}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+def canonical_url(url: str) -> str:
+    """URL senza query/fragment, host lower-case, path 'pulito'."""
+    if not url:
+        return ""
+    u = urlsplit(url)
+    # niente query, niente fragment
+    return urlunsplit((u.scheme, u.netloc.lower(), u.path.rstrip("/"), "", ""))
+
+
+def hash16(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()[:16]
 
 
 def hash_soft(title: str, company: str, location: str) -> str:
-    """Crea un hash univoco basato su titolo, azienda e località."""
     raw = f"{normalize(title)}|{normalize(company)}|{normalize(location)}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+    return hash16(raw)
 
 
 def connect(db_path: str = "job_hunter.db") -> sqlite3.Connection:
-    """Crea (se non esiste) e connette al database SQLite."""
     conn = sqlite3.connect(db_path)
     conn.execute("""
     CREATE TABLE IF NOT EXISTS jobs (
         id INTEGER PRIMARY KEY,
-        strong_key TEXT UNIQUE,             -- source+url
+        strong_key TEXT UNIQUE,             -- chiave di dedup (vedi sotto)
         soft_key   TEXT,                    -- title+company+location
         title      TEXT,
         company    TEXT,
@@ -51,16 +55,31 @@ def connect(db_path: str = "job_hunter.db") -> sqlite3.Connection:
     return conn
 
 
+def make_strong_key(j: dict) -> str:
+    """Ordine di preferenza: source+id  →  source+canonical_url  →  source+soft_key."""
+    source = normalize(j.get("source", ""))
+    jid = (j.get("id") or "").strip()          # molti adapter ce l'hanno
+    url = canonical_url(j.get("url") or "")
+    if source and jid:
+        return hash16(f"{source}|{jid}")
+    if source and url:
+        return hash16(f"{source}|{url}")
+    # fallback: soft
+    soft = hash_soft(j.get("title", ""), j.get(
+        "company", ""), j.get("location", ""))
+    return hash16(f"{source}|{soft}")
+
+
 def save_jobs(conn: sqlite3.Connection, jobs: list[dict]) -> list[dict]:
-    """Inserisce solo i NUOVI. Ritorna la lista dei nuovi inseriti."""
     cur = conn.cursor()
     new_items = []
 
     for j in jobs:
-        strong = hash_strong(j.get("source", ""), j.get(
-            "url", "")) if j.get("url") else None
+        strong = make_strong_key(j)
         soft = hash_soft(j.get("title", ""), j.get(
             "company", ""), j.get("location", ""))
+        posted = j.get("posted_at") or j.get(
+            "published_at")  # <-- fix nome campo
 
         try:
             cur.execute("""
@@ -71,7 +90,7 @@ def save_jobs(conn: sqlite3.Connection, jobs: list[dict]) -> list[dict]:
                 strong, soft,
                 j.get("title"), j.get("company"), j.get("location"),
                 j.get("url"), j.get("source"),
-                j.get("posted_at"),
+                posted,
                 dt.datetime.utcnow().isoformat(timespec="seconds"),
                 j.get("description", "")
             ))
