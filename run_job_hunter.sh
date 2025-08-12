@@ -32,7 +32,7 @@ fi
 # Avvia l’app (tutti gli argomenti passati vengono inoltrati)
 if [[ "${1:-}" == "batch" ]]; then
     shift
-    exec python src/batch_main.py "$@"
+    exec python src/run_batch.py "$@"
 else
     exec python src/main.py "$@"
 fi
