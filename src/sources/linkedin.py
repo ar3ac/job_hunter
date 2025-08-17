@@ -40,8 +40,10 @@ def fetch_linkedin(keywords, location=None, limit=30, italy_extended=False, days
 
         container = page.query_selector("div.scaffold-layout__list > div")
         if container:
-            for _ in range(10):   # quante “paginazioni” vuoi
-                container.evaluate("el => el.scrollBy(0, 600)")  # step più piccolo
+            for i in range(10):   # quante “paginazioni” vuoi
+                # step più piccolo
+                container.evaluate("el => el.scrollBy(0, 600)")
+                logging.info(f"🔽 Scroll {i+1}/10 eseguito")
                 page.wait_for_timeout(1500)  # dai tempo a LinkedIn di caricare
             logging.info("✅ Scroll graduale completato")
         else:
