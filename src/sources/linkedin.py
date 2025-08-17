@@ -30,7 +30,8 @@ def fetch_linkedin(keywords, location=None, days=1,limit=30, italy_extended=Fals
         loc = location or ""
         url = f"https://www.linkedin.com/jobs/search/?keywords={kw}&location={loc}{tpr}"
         logging.info("🌐 Apro LinkedIn Jobs: %s", url)
-        page.goto(url)
+        page.goto(url, timeout=60000, wait_until="domcontentloaded")
+
 
 
 
