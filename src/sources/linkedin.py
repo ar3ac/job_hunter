@@ -36,7 +36,7 @@ def fetch_linkedin(keywords, location=None, days=1,limit=30, italy_extended=Fals
 
         try:
             page.wait_for_selector(
-                "div.scaffold-layout__list-detail-container", timeout=10000)
+                "div.scaffold-layout__list-detail-container", timeout=30000)
         except Exception:
             logging.warning("⚠️ Nessun job trovato o sessione scaduta.")
             browser.close()
