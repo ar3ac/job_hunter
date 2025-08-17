@@ -1,9 +1,12 @@
 import logging
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
+from pathlib import Path
 
-STATE_FILE = "storage_state.json"
-
+#STATE_FILE = "storage_state.json"
+# la cartella principale del progetto
+ROOT_DIR = Path(__file__).resolve().parents[1]
+STATE_FILE = ROOT_DIR / "storage_state.json"
 
 def fetch_linkedin(keywords, location=None, days=1,limit=30, italy_extended=False):
     seconds = days * 86400
