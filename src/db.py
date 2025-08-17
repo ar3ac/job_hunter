@@ -43,6 +43,7 @@ def connect(db_path: str = "job_hunter.db") -> sqlite3.Connection:
         title      TEXT,
         company    TEXT,
         location   TEXT,
+        loc_company TEXT,
         url        TEXT,
         source     TEXT,
         posted_at  TEXT,

@@ -32,6 +32,7 @@ def render_html(jobs: list[dict]) -> str:
         "<th style='padding:8px 12px'>Titolo</th>",
         "<th style='padding:8px 12px'>Azienda</th>",
         "<th style='padding:8px 12px'>Location</th>",
+        "<th style='padding:8px 12px'>Location Azienda</th>",
         "<th style='padding:8px 12px'>Link</th>",
         "<th style='padding:8px 12px'>Data</th>",
     ]
@@ -41,6 +42,7 @@ def render_html(jobs: list[dict]) -> str:
         title = _safe(j.get("title"))
         company = _safe(j.get("company"))
         location = _safe(j.get("location"))
+        loc_company = _safe(j.get("loc_company"))
         url = j.get("url") or ""
         posted = _date10(j.get("posted_at"))
 
@@ -52,6 +54,7 @@ def render_html(jobs: list[dict]) -> str:
             f"<td style='padding:8px 12px'>{title}</td>",
             f"<td style='padding:8px 12px'>{company}</td>",
             f"<td style='padding:8px 12px'>{location}</td>",
+            f"<td style='padding:8px 12px'>{loc_company}</td>",
             (
                 f"<td style='padding:8px 12px'>"
                 f"<a href='{_safe(url)}' target='_blank' rel='noopener noreferrer'>link</a>"

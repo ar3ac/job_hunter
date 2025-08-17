@@ -1,13 +1,9 @@
 searches:
-  - name: python_dev_lombardia
-    sources: [remotive, adzuna]
-    keywords: ["python developer"]
-    location: "Lombardia"
+  - name: magazziniere
+    sources: [linkedin]
+    keywords: ["magazziniere"]
+    location: "Lecco"
     limit: 50
     italy_extended: false
 
-  - name: backend_remote
-    sources: [remotive, adzuna]
-    keywords: ["backend", "python"]
-    location: "Remote"
-    limit: 30
+
