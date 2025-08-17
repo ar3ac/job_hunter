@@ -8,7 +8,7 @@ STATE_FILE = "storage_state.json"
 def fetch_linkedin(keywords, location=None, days=1,limit=30, italy_extended=False):
     seconds = days * 86400
     tpr = f"&f_TPR=r{seconds}" if days else ""
-    url = f"https://www.linkedin.com/jobs/search/?keywords={keywords}&location={loc}{tpr}"
+    #url = f"https://www.linkedin.com/jobs/search/?keywords={keywords}&location={location}{tpr}"
     """
     Scraper LinkedIn Jobs (versione sync).
     Usa lo storage_state.json per rimanere loggato.
@@ -25,7 +25,7 @@ def fetch_linkedin(keywords, location=None, days=1,limit=30, italy_extended=Fals
         # Costruzione URL base
         kw = "+".join(keywords)
         loc = location or ""
-        url = f"https://www.linkedin.com/jobs/search/?keywords={keywords}&location={loc}"
+        url = f"https://www.linkedin.com/jobs/search/?keywords={kw}&location={loc}{tpr}"
         logging.info("🌐 Apro LinkedIn Jobs: %s", url)
         page.goto(url)
 
