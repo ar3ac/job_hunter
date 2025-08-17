@@ -18,7 +18,7 @@ def fetch_linkedin(keywords, location=None, days=1,limit=30, italy_extended=Fals
 
     with sync_playwright() as p:
         # False per debug, vedi il browser
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         context = browser.new_context(storage_state=STATE_FILE)
         page = context.new_page()
 
