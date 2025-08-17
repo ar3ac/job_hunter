@@ -10,8 +10,9 @@ STATE_FILE = ROOT_DIR / "storage_state.json"
 
 def fetch_linkedin(keywords, location=None, limit=30, italy_extended=False, days=1):
     seconds = days * 86400
-    print(days, "giorni =", seconds, "secondi")
+    #print(days, "giorni =", seconds, "secondi")
     tpr = f"&f_TPR=r{seconds}" if days else ""
+    distance = "&distance=10"
     #url = f"https://www.linkedin.com/jobs/search/?keywords={keywords}&location={location}{tpr}"
     """
     Scraper LinkedIn Jobs (versione sync).
@@ -29,7 +30,7 @@ def fetch_linkedin(keywords, location=None, limit=30, italy_extended=False, days
         # Costruzione URL base
         kw = "+".join(keywords)
         loc = location or ""
-        url = f"https://www.linkedin.com/jobs/search/?keywords={kw}&location={loc}{tpr}"
+        url = f"https://www.linkedin.com/jobs/search/?keywords={kw}&location={loc}{tpr}{distance}"
         logging.info("🌐 Apro LinkedIn Jobs: %s", url)
         page.goto(url, timeout=60000, wait_until="domcontentloaded")
 
