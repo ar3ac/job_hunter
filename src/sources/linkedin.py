@@ -34,6 +34,7 @@ def fetch_linkedin(keywords, location=None, limit=30, italy_extended=False, days
         page.goto(url, timeout=60000, wait_until="domcontentloaded")
 
         page.wait_for_selector("div.scaffold-layout__list")
+        logging.info("playwright: contenuto caricato, attendo 3 secondi....")
         page.wait_for_timeout(3000)  # attesa extra per caricamento
 
         container = page.query_selector("div.scaffold-layout__list > div")
@@ -70,7 +71,7 @@ def fetch_linkedin(keywords, location=None, limit=30, italy_extended=False, days
         for card in cards[:limit]:
             link_el = card.find("a", class_="job-card-list__title--link")
             #print(card)
-            print(len(link_el), type(link_el))
+            #print(len(link_el), type(link_el))
             company_el = card.find("div", class_="artdeco-entity-lockup__subtitle")
             location_el = card.find("ul", class_="job-card-container__metadata-wrapper")
             # A questo punto, possiamo estrarre le informazioni desiderate

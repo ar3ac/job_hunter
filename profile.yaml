@@ -6,4 +6,26 @@ searches:
     limit: 50
     italy_extended: false
 
+  - name: logistica
+    sources: [linkedin]
+    keywords: ["addetto alla logistica"]
+    location: "Lecco"
+    limit: 50
+    italy_extended: false
+
+  - name: pianificatore di produzione
+    sources: [linkedin]
+    keywords: ["pianificatore di produzione"]
+    location: "Lecco"
+    limit: 50
+    italy_extended: false
+
+  - name: planner
+    sources: [linkedin]
+    keywords: ["production planner"]
+    location: "Lecco"
+    limit: 50
+    italy_extended: false
+
+
 
