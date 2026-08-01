@@ -58,6 +58,15 @@ fi
 git fetch origin main
 git merge --ff-only origin/main
 
+# File runtime un tempo tracciati possono essere rimossi dal primo pull che li
+# aggiunge a .gitignore. Li ripristiniamo dal backup senza sovrascrivere versioni
+# eventualmente già presenti.
+for file in .env storage_state.json; do
+  if [[ ! -f "$file" && -f "$backup_dir/$file" ]]; then
+    cp -p "$backup_dir/$file" "$file"
+  fi
+done
+
 if [[ ! -d .venv ]]; then
   python3 -m venv .venv
 fi
