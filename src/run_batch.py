@@ -145,13 +145,11 @@ def main() -> None:
         **evaluated_counts,
         "source_failures": source_failures,
     }
-    if all_new or source_failures:
+    # Nessuna email quando non ci sono annunci consigliati. Gli errori delle
+    # fonti restano nei log e compariranno nel riepilogo solo insieme a offerte.
+    if all_new:
         html = render_html(all_new, summary=summary)
-        subject = (
-            f"Job Hunter — {len(all_new)} nuovi annunci"
-            if all_new
-            else f"[ATTENZIONE] Job Hunter — {len(source_failures)} ricerche fallite"
-        )
+        subject = f"Job Hunter — {len(all_new)} nuovi annunci"
         try:
             send_email(subject, html)
             logging.info("📧 Email inviata.")
