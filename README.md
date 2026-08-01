@@ -1,110 +1,153 @@
 # Job Hunter
 
-**Job Hunter** è uno script Python modulare per cercare offerte di lavoro online, filtrare in base a parole chiave e località, salvarle in un database ed inviare una notifica email con i nuovi annunci trovati.
+Job Hunter cerca offerte, le normalizza, assegna un punteggio di compatibilità
+spiegabile, elimina ripubblicazioni e invia soltanto gli annunci coerenti con il
+profilo. Supporta LinkedIn, Indeed, Adzuna e Remotive.
 
-Attualmente utilizza come fonte principale l'API di [Remotive](https://remotive.com), ma la struttura è pensata per aggiungere facilmente altre fonti come Adzuna, Indeed, LinkedIn, ecc. 12/08/25 Aggiunto fonte Adzuna e --sources come parametro 
+## Flusso
 
----
-
-## 🚀 Funzionalità
-
-- 🔍 Ricerca per **parole chiave** (es. `python`, `flask`, `developer`).
-- 📍 Filtro **località** (client-side), con opzione `--italy-extended` per includere anche annunci Europe/EU.
-- 🗄️ Salvataggio in **SQLite** con deduplicazione forte e debole.
-- 📧 Invio email in formato HTML con i nuovi annunci trovati.
-- 🛡️ Gestione errori e retry automatici sulle richieste API.
-- 🕒 Pronto per essere schedulato con **cron** o altri scheduler.
-
----
-
-## 📦 Installazione
-
-1. Clona il repository:
-   ```bash
-   git clone https://github.com/ar3ac/job_hunter.git
-   cd job_hunter
-   ```
-
-2. Crea e attiva un virtual environment:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-
-3. Installa in modalità sviluppo:
-   ```bash
-   pip install -e .
-   ```
-
-4. Crea un file `.env` per configurare le credenziali email (esempio in `.env.example`):
-   ```env
-   SMTP_HOST=smtp.example.com
-   SMTP_PORT=587
-   SMTP_USER=tuo_username
-   SMTP_PASS=tuo_password
-   SMTP_FROM=tuo@email.com
-   SMTP_TO=destinatario@email.com
-   ```
-
----
-
-## 🛠️ Utilizzo
-
-Esempio di esecuzione:
-```bash
-python src/main.py --kw python flask --location Italy --italy-extended --limit 20 --notify
+```text
+profile.yaml → fonti → normalizzazione → filtri → ranking
+             → deduplicazione → SQLite → email
 ```
 
-Parametri principali:
-- `--kw` : Lista di parole chiave (default: `python`).
-- `--location` : Filtra per località.
-- `--italy-extended` : Se location è `Italy`, include anche Europe/EU.
-- `--limit` : Numero massimo di annunci per fonte (default: 30).
-- `--db` : Percorso database SQLite (default: `job_hunter.db`).
-- `--notify` : Invia email con i nuovi annunci.
-- `--dry-run` : Non salva nulla, mostra solo i risultati.
+Funzionalità principali:
 
----
+- ranking 0–100 con motivazioni leggibili;
+- keyword obbligatorie, positive e negative;
+- esclusione di seniority, corsi, pubblicità e ruoli fuori target;
+- rilevamento di contratto ed esperienza dal testo;
+- preferenza per il tempo indeterminato;
+- distanza e periodo LinkedIn configurabili;
+- deduplicazione cross-source e soppressione delle ripubblicazioni;
+- regole e pesi personalizzabili tramite YAML;
+- email HTML ordinata per compatibilità.
 
-## 📧 Esempio di email
+## Installazione
 
-| Titolo                         | Azienda      | Location     | Link                                  | Data       |
-|--------------------------------|--------------|--------------|----------------------------------------|------------|
-| Python Developer               | ACME Corp    | Italy        | [link](https://...)                   | 2025-08-11 |
-| Backend Engineer               | Tech S.p.A.  | Europe       | [link](https://...)                   | 2025-08-10 |
-
----
-
-## 🗄️ Database e deduplicazione
-
-- **Chiave forte**: combinazione `source + url` (garantisce unicità dell'annuncio).
-- **Chiave debole**: combinazione `title + company + location` (evita duplicati quando l'URL non è presente).
-- Gli annunci già presenti non vengono reinseriti, ma possono essere rilevati da altre fonti.
-
----
-
-## 🛠️ Estendere il progetto
-
-Aggiungere nuove fonti è semplice:
-1. Creare un modulo `fetch_<fonte>.py` con una funzione `fetch_<fonte>(...)` che ritorna una lista di dict in formato standard.
-2. Integrare la nuova fonte in `main.py` o in un batch runner.
-3. Aggiungere eventuali parametri CLI dedicati.
-
----
-
-## 📅 Esecuzione programmata
-
-Esempio di cron job per eseguire ogni giorno alle 8:00:
 ```bash
-0 8 * * * /percorso/assoluto/.venv/bin/python /percorso/assoluto/src/main.py --kw python flask --location Italy --italy-extended --limit 20 --notify >> /percorso/assoluto/logs/cron.log 2>&1
+git clone https://github.com/ar3ac/job_hunter.git
+cd job_hunter
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
+.venv/bin/playwright install chromium
+cp profile.example.yaml profile.yaml
 ```
 
----
+Creare `.env` partendo da `.env.example`. Le variabili principali sono:
 
-## 📜 Licenza
+```env
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=user
+SMTP_PASS=password
+MAIL_FROM=mittente@example.com
+MAIL_TO=destinatario@example.com
+DB_PATH=job_hunter.db
+PROFILE_YAML=profile.yaml
+```
 
-Questo progetto è rilasciato sotto licenza [MIT](LICENSE).
+Per LinkedIn occorre generare una sessione locale autenticata:
 
----
+```bash
+.venv/bin/python src/linkedin_save_state.py
+```
 
-**Autore:** [Luca Marrazzo](https://github.com/ar3ac)
+## Uso
+
+Esecuzione del profilo completo:
+
+```bash
+./run_job_hunter.sh batch
+```
+
+Esecuzione CLI semplice:
+
+```bash
+./run_job_hunter.sh --sources remotive adzuna --kw python \
+  --location Italy --italy-extended --limit 20 --notify
+```
+
+## Ranking e configurazione
+
+Le regole globali si trovano sotto `rules`. Ogni ricerca può sovrascriverle con
+un blocco `rules` locale.
+
+```yaml
+rules:
+  minimum_score: 50
+  notify_score: 60
+  duplicate_window_days: 45
+  experience_max_years: 4
+  seniority_exclude: [senior, lead, manager]
+  hard_exclude: ["corso di formazione", academy, webinar]
+  contract_preferred: ["tempo indeterminato", permanent]
+
+searches:
+  - name: production_planner
+    sources: [linkedin, indeed]
+    keywords: ["production planner"]
+    required_any: ["production planner", "pianificazione produzione"]
+    positive_keywords: [mrp, lean, programmazione]
+    exclude_keywords: [software, vendita]
+    location: Lecco
+    limit: 50
+    source_options:
+      days: 1
+      distance_km: 25
+```
+
+`keywords` costruisce la query della fonte. `required_any` decide se il ruolo è
+realmente compatibile; `positive_keywords` aumenta il punteggio ed
+`exclude_keywords` lo riduce.
+
+Stati prodotti dal ranking:
+
+- `recommended`: supera `notify_score` e viene notificato se nuovo;
+- `review`: plausibile, ma sotto la soglia email;
+- `rejected`: fuori target o colpito da un'esclusione rigida.
+
+Tutti gli stati restano nel database: in questo modo gli scarti non vengono
+riesaminati ogni giorno e il ranking può essere controllato nel tempo.
+
+## Deduplicazione
+
+- chiave forte: fonte + ID originale, poi URL canonico;
+- chiave contenuto: titolo + azienda + località reale normalizzati;
+- finestra ripubblicazioni configurabile con `duplicate_window_days`;
+- `first_seen_at` e `last_seen_at` conservano gli avvistamenti.
+
+Una ripubblicazione resta nello storico ma non genera una nuova email durante la
+finestra configurata. La chiave contenuto funziona anche tra fonti diverse.
+
+## Test
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -v
+```
+
+## Deploy sul Raspberry Pi
+
+Il deploy usa SSH, crea un backup SQLite consistente e preserva `.env`,
+`profile.yaml`, sessione LinkedIn e modifiche remote non committate. Installa le
+dipendenze una volta, esegue i test e una migrazione di smoke.
+
+```bash
+./deploy.sh          # aggiorna senza eseguire subito il batch
+./deploy.sh --run    # aggiorna e avvia il batch protetto da flock
+```
+
+Destinazione e directory sono configurabili:
+
+```bash
+JOB_HUNTER_DEPLOY_TARGET=pi@host \
+JOB_HUNTER_REMOTE_DIR=/path/to/job_hunter \
+./deploy.sh
+```
+
+Il cron deve limitarsi a eseguire `run_job_hunter.sh`: le dipendenze non vengono
+più aggiornate durante ogni ricerca giornaliera.
+
+## Licenza
+
+[MIT](LICENSE) — Luca Marrazzo

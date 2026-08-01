@@ -6,6 +6,7 @@ __pycache__/
 *.egg-info/
 .eggs/
 .build/
+build/
 dist/
 
 # Venv
@@ -21,3 +22,7 @@ logs/
 .env
 last_report.html
 last_batch_report.html
+linkedin_debug.html
+src/sources/linkedin_debug.html
+storage_state.json
+.indeed_profile/

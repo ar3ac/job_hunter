@@ -50,6 +50,7 @@ def fetch_remotive(
     limit: int = 50,
     italy_extended: bool = False,
     session: Optional[requests.Session] = None,
+    **_options,
 ) -> List[Dict[str, Any]]:
     """
     Scarica lavori da Remotive filtrando per parole chiave e location (client-side).

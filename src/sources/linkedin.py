@@ -1,117 +1,155 @@
+from __future__ import annotations
+
 import logging
-from playwright.sync_api import sync_playwright
-from bs4 import BeautifulSoup
+import re
 from pathlib import Path
-import time
-#STATE_FILE = "storage_state.json"
-# la cartella principale del progetto
+from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit
+
+from bs4 import BeautifulSoup
+
+
 ROOT_DIR = Path(__file__).resolve().parents[2]
 STATE_FILE = ROOT_DIR / "storage_state.json"
 
-def fetch_linkedin(keywords, location=None, limit=30, italy_extended=False, days=1):
-    seconds = days * 86400
-    #print(days, "giorni =", seconds, "secondi")
-    tpr = f"&f_TPR=r{seconds}" if days else ""
-    distance = "&distance=10"
-    #url = f"https://www.linkedin.com/jobs/search/?keywords={keywords}&location={location}{tpr}"
-    """
-    Scraper LinkedIn Jobs (versione sync).
-    Usa lo storage_state.json per rimanere loggato.
-    Ritorna una lista di dict compatibili col DB.
-    """
-    jobs = []
 
-    with sync_playwright() as p:
-        # False per debug, vedi il browser
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(storage_state=STATE_FILE)
-        page = context.new_page()
-
-        # Costruzione URL base
-        kw = "+".join(keywords)
-        loc = location or ""
-        url = f"https://www.linkedin.com/jobs/search/?keywords={kw}&location={loc}{tpr}{distance}"
-        logging.info("🌐 Apro LinkedIn Jobs: %s", url)
-        page.goto(url, timeout=60000, wait_until="domcontentloaded")
-
-        page.wait_for_selector("div.scaffold-layout__list")
-        logging.info("playwright: contenuto caricato, attendo 3 secondi....")
-        page.wait_for_timeout(3000)  # attesa extra per caricamento
-
-        container = page.query_selector("div.scaffold-layout__list > div")
-        if container:
-            for i in range(10):   # quante “paginazioni” vuoi
-                # step più piccolo
-                container.evaluate("el => el.scrollBy(0, 600)")
-                logging.info(f"🔽 Scroll {i+1}/10 eseguito")
-                page.wait_for_timeout(1500)  # dai tempo a LinkedIn di caricare
-            logging.info("✅ Scroll graduale completato")
-        else:
-            logging.warning("⚠️ Contenitore scroll non trovato")
+def _clean_job_url(href: str) -> str:
+    absolute = urljoin("https://www.linkedin.com", href)
+    parsed = urlsplit(absolute)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", ""))
 
 
-        # try:
-        #     page.wait_for_selector(
-        #         "div.scaffold-layout__list-detail-container", timeout=30000)
-        # except Exception:
-        #     logging.warning("⚠️ Nessun job trovato o sessione scaduta.")
-        #     browser.close()
-        #     return []
-        
-        html = page.content()
-        # with open("linkedin_debug.html", "w", encoding="utf-8") as f:
-        #    f.write(html)
-        
-        browser.close()
+def _job_id(url: str) -> str | None:
+    match = re.search(r"/jobs/view/(\d+)", url)
+    return match.group(1) if match else None
 
-        # Parse con BeautifulSoup
-        soup = BeautifulSoup(html, "html.parser")
-        container = soup.find("div", class_="scaffold-layout__list")
-        lu_container = container.find("ul")
-        cards = lu_container.find_all("li", recursive=False)
-        print(len(cards), "risultati trovati")
-        #time.sleep(50)  # per sicurezza, evita problemi di rate limit
-        for card in cards[:limit]:
-            link_el = card.find("a", class_="job-card-list__title--link")
-            #print(card)
-            #print(len(link_el), type(link_el))
-            company_el = card.find("div", class_="artdeco-entity-lockup__subtitle")
-            location_el = card.find("ul", class_="job-card-container__metadata-wrapper")
-            # A questo punto, possiamo estrarre le informazioni desiderate
-            #print(link_el)
-            title = link_el.find("strong").text.strip()
-            #print("Titolo:", title)
-            job_url = link_el['href']
-            #print("Link:", job_url[:20])
-            company = company_el.text.strip()
-            #print("Azienda:", company)
-            loc_company = location_el.text.strip()
-            #print("Location Azienda:", loc_company)
-            jobs.append({
-                "id": None,
-                "title": title,
-                "company": company,
-                "location": location or "",
-                "loc_company": loc_company,
-                "url": "https://www.linkedin.com" + job_url,
-                "source": "linkedin",
-                "posted_at": None,
-                "description": ""
-            })
-    
+
+def _text(node) -> str:
+    return node.get_text(" ", strip=True) if node else ""
+
+
+def parse_job_cards(html: str, location: str | None, limit: int) -> list[dict]:
+    """Parser puro e testabile della lista LinkedIn."""
+    soup = BeautifulSoup(html, "html.parser")
+    list_container = soup.find("div", class_="scaffold-layout__list")
+    ul = list_container.find("ul") if list_container else None
+    cards = ul.find_all("li", recursive=False) if ul else []
+    jobs: list[dict] = []
+    for card in cards:
+        link = card.find("a", class_="job-card-list__title--link")
+        if not link or not link.get("href"):
+            continue
+        title = _text(link.find("strong")) or _text(link)
+        company = _text(card.find("div", class_="artdeco-entity-lockup__subtitle"))
+        location_actual = _text(
+            card.find("ul", class_="job-card-container__metadata-wrapper")
+        )
+        if not title:
+            continue
+        job_url = _clean_job_url(link["href"])
+        jobs.append({
+            "id": _job_id(job_url),
+            "title": title,
+            "company": company,
+            "location": location_actual or location or "",
+            "location_actual": location_actual,
+            "loc_company": location_actual,
+            "url": job_url,
+            "source": "linkedin",
+            "posted_at": None,
+            "description": "",
+        })
+        if len(jobs) >= max(1, int(limit)):
+            break
+    return jobs
+
+
+def fetch_linkedin(
+    keywords,
+    location=None,
+    limit=30,
+    italy_extended=False,
+    days=1,
+    distance_km=10,
+    enrich_details=True,
+    detail_limit=20,
+):
+    """Raccoglie e normalizza le offerte LinkedIn della pagina risultati."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.sync_api import sync_playwright
+
+    del italy_extended  # LinkedIn applica direttamente il filtro location.
+    params = {
+        "keywords": " ".join(str(k) for k in keywords if k),
+        "location": location or "",
+        "distance": max(0, int(distance_km)),
+    }
+    if days:
+        params["f_TPR"] = f"r{int(days) * 86400}"
+    url = f"https://www.linkedin.com/jobs/search/?{urlencode(params)}"
+    jobs: list[dict] = []
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            context = browser.new_context(storage_state=STATE_FILE)
+            page = context.new_page()
+            logging.info("🌐 Apro LinkedIn Jobs: %s", url)
+            page.goto(url, timeout=60000, wait_until="domcontentloaded")
+            try:
+                page.wait_for_selector("div.scaffold-layout__list", timeout=30000)
+            except PlaywrightTimeoutError as exc:
+                if "/login" in page.url or "checkpoint" in page.url:
+                    raise RuntimeError("Sessione LinkedIn scaduta: rigenerare storage_state.json") from exc
+                raise RuntimeError("Lista offerte LinkedIn non caricata") from exc
+
+            container = page.query_selector("div.scaffold-layout__list > div")
+            if container:
+                for index in range(10):
+                    container.evaluate("el => el.scrollBy(0, 600)")
+                    logging.debug("Scroll LinkedIn %d/10", index + 1)
+                    page.wait_for_timeout(1200)
+
+            jobs = parse_job_cards(page.content(), location, limit)
+            logging.info("LinkedIn: %d offerte normalizzate", len(jobs))
+
+            # Arricchisce solo candidati con una keyword già presente nel titolo:
+            # evita visite inutili a pubblicità e raccomandazioni palesemente fuori target.
+            if enrich_details:
+                terms = [str(k).casefold() for k in keywords if k]
+                candidates = [
+                    job for job in jobs
+                    if any(term in job["title"].casefold() for term in terms)
+                ][:max(0, int(detail_limit))]
+                detail_page = context.new_page()
+                for job in candidates:
+                    try:
+                        detail_page.goto(
+                            job["url"], timeout=45000, wait_until="domcontentloaded"
+                        )
+                        description = detail_page.locator(
+                            ".jobs-description-content__text, .jobs-description, article.jobs-description__container"
+                        ).first
+                        if description.count():
+                            job["description"] = description.inner_text(timeout=5000).strip()
+                        criteria = detail_page.locator(
+                            ".job-details-jobs-unified-top-card__job-insight, "
+                            ".jobs-unified-top-card__job-insight"
+                        ).all_inner_texts()
+                        if criteria:
+                            job["description"] += "\n" + "\n".join(criteria)
+                    except Exception as exc:
+                        logging.warning("Dettaglio LinkedIn non disponibile per %s: %s", job["url"], exc)
+                detail_page.close()
+        finally:
+            browser.close()
 
     return jobs
 
 
-# Funzione main per test standalone
 def main():
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s %(levelname)s %(message)s")
-    jobs = fetch_linkedin(["magazziniere"], location="Lecco", limit=50)
-
-    print("=== Risultati LinkedIn ===")
-    for j in jobs:
-        print(f"{j['title']} — {j['company']} - {j['loc_company']} - ({j['url'][:40]})")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    for job in fetch_linkedin(["magazziniere"], location="Lecco", limit=10):
+        print(f"{job['title']} — {job['company']} — {job['location_actual']}")
 
 
 if __name__ == "__main__":

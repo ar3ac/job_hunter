@@ -15,10 +15,10 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 
-# Dipendenze
-if [[ -f requirements.txt ]]; then
-  pip install -U pip >/dev/null
-  pip install -r requirements.txt >/dev/null
+# Le dipendenze vengono installate da deploy.sh, non durante ogni esecuzione cron.
+if ! python -c 'import bs4, dotenv, playwright, requests, yaml' 2>/dev/null; then
+  echo "Dipendenze mancanti: esegui ./deploy.sh oppure pip install -e ." >&2
+  exit 1
 fi
 
 # Carica .env se presente (funziona anche da cron)
@@ -36,4 +36,3 @@ if [[ "${1:-}" == "batch" ]]; then
 else
     exec python src/main.py "$@"
 fi
-

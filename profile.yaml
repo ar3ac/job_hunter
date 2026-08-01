@@ -1,31 +1,59 @@
+rules:
+  minimum_score: 50
+  notify_score: 60
+  duplicate_window_days: 45
+  experience_max_years: 4
+  seniority_exclude:
+    [senior, "sr.", lead, "head of", director, dirigente, manager, responsabile, supervisor]
+  hard_exclude:
+    ["corso di formazione", "formazione gratuita", "corso gratuito", academy,
+     masterclass, webinar, "annuncio test", "job name: test", franchising]
+  contract_preferred: ["tempo indeterminato", permanent]
+  contract_exclude: [tirocinio]
+
 searches:
   - name: magazziniere
     sources: [linkedin]
     keywords: ["magazziniere"]
+    required_any: [magazziniere, "addetto magazzino", "addetto al magazzino", warehouse]
+    positive_keywords: [logistica, picking, packing, muletto, carrellista, spedizioni]
+    exclude_keywords: [vendita, commerciale, software, developer]
     location: "Lecco"
     limit: 50
     italy_extended: false
+    source_options: {days: 1, distance_km: 25, enrich_details: true, detail_limit: 20}
 
   - name: logistica
     sources: [linkedin]
     keywords: ["addetto alla logistica"]
+    required_any: [logistica, logistico, logistic, spedizioni, approvvigionamenti]
+    positive_keywords: [magazzino, trasporti, supply chain, import, export]
+    exclude_keywords: [vendita, commerciale, software, developer]
     location: "Lecco"
     limit: 50
     italy_extended: false
+    source_options: {days: 1, distance_km: 25, enrich_details: true, detail_limit: 20}
 
   - name: pianificatore di produzione
     sources: [linkedin]
     keywords: ["pianificatore di produzione"]
+    required_any: ["pianificatore di produzione", "pianificazione produzione", "programmazione produzione", "production planning"]
+    positive_keywords: [produzione, pianificazione, programmazione, mrp, lean]
+    exclude_keywords: [software, developer, vendita, commerciale]
     location: "Lecco"
     limit: 50
     italy_extended: false
+    source_options: {days: 1, distance_km: 25, enrich_details: true, detail_limit: 20}
 
   - name: planner
     sources: [linkedin]
     keywords: ["production planner"]
+    required_any: ["production planner", "production planning", "pianificatore di produzione", "pianificazione produzione"]
+    positive_keywords: [produzione, planning, programmazione, mrp, lean]
+    exclude_keywords: [software, developer, vendita, commerciale]
     location: "Lecco"
     limit: 50
     italy_extended: false
-
+    source_options: {days: 1, distance_km: 25, enrich_details: true, detail_limit: 20}
 
 

@@ -1,8 +1,20 @@
 
+rules:
+  minimum_score: 50
+  notify_score: 60
+  duplicate_window_days: 45
+  experience_max_years: 4
+  seniority_exclude: [senior, lead, "head of", director, manager]
+  hard_exclude: ["corso di formazione", "formazione gratuita", academy, webinar]
+  contract_preferred: ["tempo indeterminato", permanent]
+
 searches:
   - name: python_dev_lombardia
     sources: [remotive, adzuna]
     keywords: ["python developer"]
+    required_any: ["python developer", "backend developer"]
+    positive_keywords: [python, django, fastapi]
+    exclude_keywords: [senior, lead, corso]
     location: "Lombardia"
     limit: 50
     italy_extended: false

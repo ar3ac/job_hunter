@@ -9,6 +9,7 @@ from report import render_html
 from notify import send_email
 from sources import SOURCES
 from pathlib import Path
+from ranking import apply_evaluation, merge_rules
 
 
 # Progetto: .../job_hunter/src/main.py  -> root = .../job_hunter
@@ -86,7 +87,17 @@ def cli() -> None:
     conn = None
     try:
         conn = connect(args.db)
-        new_jobs = save_jobs(conn, jobs)
+        search = {
+            "name": "CLI",
+            "keywords": args.kw,
+            "location": args.location,
+        }
+        evaluated = [apply_evaluation(job, search) for job in jobs]
+        rules = merge_rules(None, search)
+        inserted = save_jobs(
+            conn, evaluated, duplicate_window_days=rules["duplicate_window_days"]
+        )
+        new_jobs = [job for job in inserted if job.get("status") == "recommended"]
     finally:
         if conn is not None:
             try:
@@ -111,7 +122,7 @@ def cli() -> None:
         logging.info("💾 Report salvato in last_report.html")
 
     if args.notify:
-        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+        date_str = datetime.now().astimezone().strftime("%Y-%m-%d")
         subject = f"[Job Hunter] {len(new_jobs)} nuovi — {date_str}"
         try:
             send_email(subject, html)

@@ -14,8 +14,7 @@ def send_email(subject: str, html_body: str) -> None:
     mail_to = os.getenv("MAIL_TO")
 
     if not all([host, port, user, pwd, mail_from, mail_to]):
-        print("⚠️ Config email mancante: controlla .env")
-        return
+        raise RuntimeError("Configurazione email incompleta: controlla .env")
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -24,7 +23,8 @@ def send_email(subject: str, html_body: str) -> None:
 
     msg.attach(MIMEText(html_body, "html"))
 
-    with smtplib.SMTP(host, port) as server:
+    recipients = [address.strip() for address in mail_to.split(",") if address.strip()]
+    with smtplib.SMTP(host, port, timeout=30) as server:
         server.starttls()
         server.login(user, pwd)
-        server.sendmail(mail_from, [mail_to], msg.as_string())
+        server.sendmail(mail_from, recipients, msg.as_string())

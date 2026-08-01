@@ -11,6 +11,7 @@ from db import connect, save_jobs
 from report import render_html
 from notify import send_email
 from sources import SOURCES  # registro fonti (remotive, adzuna, ...)
+from ranking import apply_evaluation, merge_rules
 
 
 def setup_logging() -> None:
@@ -47,6 +48,7 @@ def main() -> None:
         cfg = yaml.safe_load(f) or {}
 
     searches = cfg.get("searches", [])
+    global_rules = cfg.get("rules", {})
     if not searches:
         logging.warning("Nessuna ricerca definita in profile.yaml")
         return
@@ -58,6 +60,8 @@ def main() -> None:
 
     all_new: list[dict] = []
     grand_total_found = 0
+    evaluated_counts = {"recommended": 0, "review": 0, "rejected": 0}
+    source_failures: list[str] = []
 
     try:
         for s in searches:
@@ -82,30 +86,48 @@ def main() -> None:
                         "Fonte sconosciuta: %s (ignorata)", src_name)
                     continue
                 try:
-                    part = fetch(keywords, location, limit, italy_ext)
+                    source_options = dict(s.get("source_options") or {})
+                    part = fetch(
+                        keywords, location, limit, italy_ext, **source_options
+                    )
                     logging.info("Fonte %s: trovati %d annunci",
                                  src_name, len(part))
                     search_jobs.extend(part)
                 except Exception as e:
                     logging.exception(
                         "Errore durante il fetch %s: %s", src_name, e)
+                    source_failures.append(f"{search_name}/{src_name}: {e}")
 
             grand_total_found += len(search_jobs)
 
-            # salvataggio + etichetta di provenienza (nome ricerca)
-            new_jobs = save_jobs(conn, search_jobs)
+            evaluated_jobs = [
+                apply_evaluation(job, s, global_rules) for job in search_jobs
+            ]
+            for job in evaluated_jobs:
+                evaluated_counts[job["status"]] += 1
+
+            effective_rules = merge_rules(global_rules, s)
+            new_jobs = save_jobs(
+                conn,
+                evaluated_jobs,
+                duplicate_window_days=int(effective_rules["duplicate_window_days"]),
+            )
             # se save_jobs non committa internamente, committa qui:
             try:
                 conn.commit()
             except Exception:
                 logging.exception("Commit fallito")
 
-            for j in new_jobs:
-                j["search"] = search_name  # utile nel report/email
-
-            logging.info("[%s] nuovi inseriti in DB: %d",
-                         search_name, len(new_jobs))
-            all_new.extend(new_jobs)
+            recommended = [j for j in new_jobs if j.get("status") == "recommended"]
+            logging.info(
+                "[%s] nuovi DB=%d | consigliati=%d | review=%d | scartati=%d",
+                search_name,
+                len(new_jobs),
+                len(recommended),
+                sum(j.get("status") == "review" for j in new_jobs),
+                sum(j.get("status") == "rejected" for j in new_jobs),
+            )
+            all_new.extend(recommended)
 
     finally:
         try:
@@ -115,11 +137,21 @@ def main() -> None:
 
     logging.info(
         "Totale annunci raccolti (tutte le ricerche/fonti): %d", grand_total_found)
-    logging.info("Totale NUOVI inseriti (tutte le ricerche): %d", len(all_new))
+    logging.info("Totale nuovi CONSIGLIATI da notificare: %d", len(all_new))
+    logging.info("Valutazione risultati: %s", evaluated_counts)
 
-    if all_new:
-        html = render_html(all_new)  # supporta colonna "search"
-        subject = f"Job Hunter — {len(all_new)} nuovi annunci (batch)"
+    summary = {
+        "found": grand_total_found,
+        **evaluated_counts,
+        "source_failures": source_failures,
+    }
+    if all_new or source_failures:
+        html = render_html(all_new, summary=summary)
+        subject = (
+            f"Job Hunter — {len(all_new)} nuovi annunci"
+            if all_new
+            else f"[ATTENZIONE] Job Hunter — {len(source_failures)} ricerche fallite"
+        )
         try:
             send_email(subject, html)
             logging.info("📧 Email inviata.")
@@ -132,6 +164,9 @@ def main() -> None:
         logging.info("💾 Report salvato in %s", out)
     else:
         logging.info("Nessun nuovo annuncio oggi.")
+
+    if source_failures:
+        logging.error("Fonti fallite: %s", " | ".join(source_failures))
 
 
 if __name__ == "__main__":

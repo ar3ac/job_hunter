@@ -4,7 +4,7 @@ import requests
 from datetime import datetime
 
 
-def fetch_adzuna(kw, location=None, limit=30, italy_extended=False):
+def fetch_adzuna(kw, location=None, limit=30, italy_extended=False, **_options):
     """
     Ritorna una lista di dict con le stesse chiavi che usi per Remotive:
     source, id, title, company, location, url, published_at, salary_min, salary_max, currency, description
@@ -61,4 +61,3 @@ def fetch_adzuna(kw, location=None, limit=30, italy_extended=False):
             "description": it.get("description"),
         })
     return out
-

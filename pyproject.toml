@@ -4,14 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "job_hunter"
-version = "0.1.0"
+version = "0.2.0"
 description = "Job Hunter: fetcher annunci + DB + email"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "requests>=2.32.0",
   "python-dotenv>=1.0.1",
-  "PyYAML>=6.0.2"
+  "PyYAML>=6.0.2",
+  "beautifulsoup4>=4.13.0",
+  "playwright>=1.58.0"
 ]
 
 [project.scripts]
@@ -20,4 +22,7 @@ job-hunter-batch = "run_batch:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-py-modules = ["main", "fetch_remotive", "db", "report", "notify", "run_batch"]
+py-modules = ["main", "db", "report", "notify", "ranking", "run_batch"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
