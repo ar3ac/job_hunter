@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-from db import connect, save_jobs
+from db import connect, content_key, save_jobs
 from report import render_html
 from notify import send_email
 from sources import SOURCES  # registro fonti (remotive, adzuna, ...)
@@ -58,7 +58,7 @@ def main() -> None:
     logging.info("DB path batch: %s", db_path)
     conn = connect(db_path)
 
-    all_new: list[dict] = []
+    all_new_by_content: dict[str, dict] = {}
     grand_total_found = 0
     evaluated_counts = {"recommended": 0, "review": 0, "rejected": 0}
     source_failures: list[str] = []
@@ -118,16 +118,21 @@ def main() -> None:
             except Exception:
                 logging.exception("Commit fallito")
 
-            recommended = [j for j in new_jobs if j.get("status") == "recommended"]
             logging.info(
-                "[%s] nuovi DB=%d | consigliati=%d | review=%d | scartati=%d",
+                "[%s] nuovi DB/email=%d | consigliati=%d | review=%d | bassa compatibilità=%d",
                 search_name,
                 len(new_jobs),
-                len(recommended),
+                sum(j.get("status") == "recommended" for j in new_jobs),
                 sum(j.get("status") == "review" for j in new_jobs),
                 sum(j.get("status") == "rejected" for j in new_jobs),
             )
-            all_new.extend(recommended)
+            # Fase di calibrazione: il ranking ordina e spiega, ma non nasconde
+            # alcun nuovo annuncio. La deduplicazione resta attiva.
+            for job in new_jobs:
+                key = content_key(job)
+                previous = all_new_by_content.get(key)
+                if previous is None or int(job.get("score") or 0) > int(previous.get("score") or 0):
+                    all_new_by_content[key] = job
 
     finally:
         try:
@@ -135,9 +140,10 @@ def main() -> None:
         except Exception:
             logging.warning("Impossibile chiudere la connessione DB.")
 
+    all_new = list(all_new_by_content.values())
     logging.info(
         "Totale annunci raccolti (tutte le ricerche/fonti): %d", grand_total_found)
-    logging.info("Totale nuovi CONSIGLIATI da notificare: %d", len(all_new))
+    logging.info("Totale nuovi annunci da notificare: %d", len(all_new))
     logging.info("Valutazione risultati: %s", evaluated_counts)
 
     summary = {
@@ -145,8 +151,8 @@ def main() -> None:
         **evaluated_counts,
         "source_failures": source_failures,
     }
-    # Nessuna email quando non ci sono annunci consigliati. Gli errori delle
-    # fonti restano nei log e compariranno nel riepilogo solo insieme a offerte.
+    # Una sola email con tutti i nuovi annunci ordinati per ranking. Nessuna
+    # email quando il batch non produce nuovi record.
     if all_new:
         html = render_html(all_new, summary=summary)
         subject = f"Job Hunter — {len(all_new)} nuovi annunci"

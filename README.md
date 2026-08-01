@@ -103,12 +103,14 @@ realmente compatibile; `positive_keywords` aumenta il punteggio ed
 
 Stati prodotti dal ranking:
 
-- `recommended`: supera `notify_score` e viene notificato se nuovo;
-- `review`: plausibile, ma sotto la soglia email;
-- `rejected`: fuori target o colpito da un'esclusione rigida.
+- `recommended`: alta compatibilità;
+- `review`: compatibilità intermedia;
+- `rejected`: bassa compatibilità o presenza di segnali negativi.
 
-Tutti gli stati restano nel database: in questo modo gli scarti non vengono
-riesaminati ogni giorno e il ranking può essere controllato nel tempo.
+Durante la fase di calibrazione tutti i nuovi annunci non duplicati vengono
+inviati in un'unica email, ordinati per punteggio. Gli stati servono a capire e
+affinare il ranking, non a nascondere risultati. Se non ci sono nuovi annunci,
+non viene inviata alcuna email.
 
 ## Deduplicazione
 

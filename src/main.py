@@ -97,7 +97,7 @@ def cli() -> None:
         inserted = save_jobs(
             conn, evaluated, duplicate_window_days=rules["duplicate_window_days"]
         )
-        new_jobs = [job for job in inserted if job.get("status") == "recommended"]
+        new_jobs = inserted
     finally:
         if conn is not None:
             try:
