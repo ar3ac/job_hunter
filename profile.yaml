@@ -56,4 +56,83 @@ searches:
     italy_extended: false
     source_options: {days: 1, distance_km: 25, enrich_details: true, detail_limit: 20}
 
+  - name: production planning
+    sources: [linkedin]
+    keywords: ['"Production Planner" OR "Pianificatore di produzione" OR "Addetto programmazione produzione" OR "Production Planning Specialist" OR "Production Scheduler"']
+    required_any: ["production planner", "pianificatore di produzione", "addetto programmazione produzione", "production planning specialist", "production scheduler"]
+    positive_keywords: [produzione, planning, programmazione, schedulazione, mrp, sap]
+    exclude_keywords: [vendita, commerciale]
+    location: "Lecco"
+    limit: 50
+    italy_extended: false
+    source_options:
+      days: 1
+      distance_km: 25
+      enrich_details: true
+      detail_limit: 20
+      detail_terms: ["production planner", "pianificatore di produzione", "addetto programmazione produzione", "production planning specialist", "production scheduler"]
+
+  - name: material e supply planning
+    sources: [linkedin]
+    keywords: ['"Material Planner" OR "Material Scheduler" OR "Supply Planner" OR "Supply Chain Planner"']
+    required_any: ["material planner", "material scheduler", "supply planner", "supply chain planner"]
+    positive_keywords: [materiali, supply chain, approvvigionamenti, pianificazione, mrp, sap]
+    exclude_keywords: [vendita, commerciale]
+    location: "Lecco"
+    limit: 50
+    italy_extended: false
+    source_options:
+      days: 1
+      distance_km: 25
+      enrich_details: true
+      detail_limit: 20
+      detail_terms: ["material planner", "material scheduler", "supply planner", "supply chain planner"]
+
+  - name: planning e operations analyst
+    sources: [linkedin]
+    keywords: ['"Industrial Planner" OR "Production Planning Analyst" OR "Supply Chain Analyst" OR "Operations Analyst" OR "Planning Analyst" OR "Logistics Analyst" OR "Process Analyst"']
+    required_any: ["industrial planner", "production planning analyst", "supply chain analyst", "operations analyst", "planning analyst", "logistics analyst", "process analyst"]
+    positive_keywords: [operations, logistica, processi, reporting, analisi, kpi, excel, power bi]
+    exclude_keywords: [vendita, commerciale]
+    location: "Lecco"
+    limit: 50
+    italy_extended: false
+    source_options:
+      days: 1
+      distance_km: 25
+      enrich_details: true
+      detail_limit: 20
+      detail_terms: ["industrial planner", "production planning analyst", "supply chain analyst", "operations analyst", "planning analyst", "logistics analyst", "process analyst"]
+
+  - name: sap key user
+    sources: [linkedin]
+    keywords: ['"SAP Key User" OR "SAP PP Key User" OR "SAP MM Key User"']
+    required_any: ["sap key user", "sap pp key user", "sap mm key user"]
+    positive_keywords: [sap, pp, mm, produzione, materiali, processi, erp]
+    exclude_keywords: [consultant, consulente, developer]
+    location: "Lecco"
+    limit: 50
+    italy_extended: false
+    source_options:
+      days: 1
+      distance_km: 25
+      enrich_details: true
+      detail_limit: 20
+      detail_terms: ["sap key user", "sap pp key user", "sap mm key user"]
+
+  - name: reporting automation
+    sources: [linkedin]
+    keywords: ['"Reporting Automation Analyst"']
+    required_any: ["reporting automation analyst", "reporting analyst", "automation analyst"]
+    positive_keywords: [reporting, automation, excel, power bi, vba, python, kpi]
+    exclude_keywords: [developer, sales, vendita]
+    location: "Lecco"
+    limit: 50
+    italy_extended: false
+    source_options:
+      days: 1
+      distance_km: 25
+      enrich_details: true
+      detail_limit: 20
+      detail_terms: ["reporting automation analyst", "reporting analyst", "automation analyst"]
 

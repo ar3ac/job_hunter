@@ -72,6 +72,7 @@ def fetch_linkedin(
     distance_km=10,
     enrich_details=True,
     detail_limit=20,
+    detail_terms=None,
 ):
     """Raccoglie e normalizza le offerte LinkedIn della pagina risultati."""
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -115,7 +116,11 @@ def fetch_linkedin(
             # Arricchisce solo candidati con una keyword già presente nel titolo:
             # evita visite inutili a pubblicità e raccomandazioni palesemente fuori target.
             if enrich_details:
-                terms = [str(k).casefold() for k in keywords if k]
+                terms = [
+                    str(term).casefold()
+                    for term in (detail_terms or keywords)
+                    if term
+                ]
                 candidates = [
                     job for job in jobs
                     if any(term in job["title"].casefold() for term in terms)
