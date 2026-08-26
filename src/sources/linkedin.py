@@ -20,7 +20,12 @@ def _clean_job_url(href: str) -> str:
 
 def _job_id(url: str) -> str | None:
     match = re.search(r"/jobs/view/(\d+)", url)
-    return match.group(1) if match else None
+    if match:
+        return match.group(1)
+    m = re.search(r"-(\d+)(?:\?|$)", url)
+    if m:
+        return m.group(1)
+    return None
 
 
 def _text(node) -> str:
@@ -30,36 +35,75 @@ def _text(node) -> str:
 def parse_job_cards(html: str, location: str | None, limit: int) -> list[dict]:
     """Parser puro e testabile della lista LinkedIn."""
     soup = BeautifulSoup(html, "html.parser")
-    list_container = soup.find("div", class_="scaffold-layout__list")
-    ul = list_container.find("ul") if list_container else None
-    cards = ul.find_all("li", recursive=False) if ul else []
     jobs: list[dict] = []
-    for card in cards:
-        link = card.find("a", class_="job-card-list__title--link")
-        if not link or not link.get("href"):
-            continue
-        title = _text(link.find("strong")) or _text(link)
-        company = _text(card.find("div", class_="artdeco-entity-lockup__subtitle"))
-        location_actual = _text(
-            card.find("ul", class_="job-card-container__metadata-wrapper")
-        )
-        if not title:
-            continue
-        job_url = _clean_job_url(link["href"])
-        jobs.append({
-            "id": _job_id(job_url),
-            "title": title,
-            "company": company,
-            "location": location_actual or location or "",
-            "location_actual": location_actual,
-            "loc_company": location_actual,
-            "url": job_url,
-            "source": "linkedin",
-            "posted_at": None,
-            "description": "",
-        })
-        if len(jobs) >= max(1, int(limit)):
-            break
+
+    # 1. Prova il layout per utente loggato
+    list_container = soup.find("div", class_="scaffold-layout__list")
+    if list_container:
+        ul = list_container.find("ul")
+        cards = ul.find_all("li", recursive=False) if ul else []
+        for card in cards:
+            link = card.find("a", class_="job-card-list__title--link")
+            if not link or not link.get("href"):
+                continue
+            title = _text(link.find("strong")) or _text(link)
+            company = _text(card.find("div", class_="artdeco-entity-lockup__subtitle"))
+            location_actual = _text(
+                card.find("ul", class_="job-card-container__metadata-wrapper")
+            )
+            if not title:
+                continue
+            job_url = _clean_job_url(link["href"])
+            jobs.append({
+                "id": _job_id(job_url),
+                "title": title,
+                "company": company,
+                "location": location_actual or location or "",
+                "location_actual": location_actual,
+                "loc_company": location_actual,
+                "url": job_url,
+                "source": "linkedin",
+                "posted_at": None,
+                "description": "",
+            })
+            if len(jobs) >= max(1, int(limit)):
+                break
+        return jobs
+
+    # 2. Prova il layout pubblico (utente non loggato o authwall bypassato)
+    ul = soup.find("ul", class_="jobs-search__results-list")
+    if ul:
+        cards = ul.find_all("li", recursive=False)
+        for card in cards:
+            link = card.find("a", class_="base-card__full-link")
+            if not link or not link.get("href"):
+                continue
+            title_node = card.find("h3", class_="base-search-card__title")
+            title = _text(title_node) or _text(card.find("span", class_="sr-only"))
+            company_node = card.find("h4", class_="base-search-card__subtitle")
+            company = _text(company_node)
+            location_node = card.find("span", class_="job-search-card__location")
+            location_actual = _text(location_node)
+            if not title:
+                continue
+            
+            job_url = _clean_job_url(link["href"])
+            jobs.append({
+                "id": _job_id(job_url),
+                "title": title,
+                "company": company,
+                "location": location_actual or location or "",
+                "location_actual": location_actual,
+                "loc_company": location_actual,
+                "url": job_url,
+                "source": "linkedin",
+                "posted_at": None,
+                "description": "",
+            })
+            if len(jobs) >= max(1, int(limit)):
+                break
+        return jobs
+
     return jobs
 
 
@@ -97,7 +141,7 @@ def fetch_linkedin(
             logging.info("🌐 Apro LinkedIn Jobs: %s", url)
             page.goto(url, timeout=60000, wait_until="domcontentloaded")
             try:
-                page.wait_for_selector("div.scaffold-layout__list", timeout=30000)
+                page.wait_for_selector("div.scaffold-layout__list, ul.jobs-search__results-list", timeout=30000)
             except PlaywrightTimeoutError as exc:
                 if "/login" in page.url or "checkpoint" in page.url:
                     raise RuntimeError("Sessione LinkedIn scaduta: rigenerare storage_state.json") from exc
@@ -106,9 +150,19 @@ def fetch_linkedin(
             container = page.query_selector("div.scaffold-layout__list > div")
             if container:
                 for index in range(10):
-                    container.evaluate("el => el.scrollBy(0, 600)")
-                    logging.debug("Scroll LinkedIn %d/10", index + 1)
-                    page.wait_for_timeout(1200)
+                    try:
+                        container.evaluate("el => el.scrollBy(0, 600)")
+                        logging.debug("Scroll LinkedIn %d/10", index + 1)
+                        page.wait_for_timeout(1200)
+                    except Exception:
+                        break
+            else:
+                for index in range(10):
+                    try:
+                        page.evaluate("window.scrollBy(0, 600)")
+                        page.wait_for_timeout(1200)
+                    except Exception:
+                        break
 
             jobs = parse_job_cards(page.content(), location, limit)
             logging.info("LinkedIn: %d offerte normalizzate", len(jobs))
